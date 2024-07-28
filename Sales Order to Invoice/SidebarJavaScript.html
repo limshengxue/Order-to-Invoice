@@ -1,0 +1,126 @@
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script>
+  /**
+   * Run initializations on sidebar load.
+   */
+  $(function() {
+    // Assign handler functions to sidebar elements here, if needed.
+    $('#sidebar-approve-button').click(onApproveBtnClick);
+    $('#sidebar-fulfill-button').click(onFulfillBtnClick);
+
+    // Call the server here to retrieve any information needed to build
+    // the sidebar, if necessary.
+    $('#sidebar-approve-button').prop('disabled', true);
+    $('#sidebar-fulfill-button').prop('disabled', true);
+
+    google.script.run
+       .withSuccessHandler(function(status) {
+            const isApproved = status["approved"]
+            const isFulfilled = status["converted"]
+
+            // Respond to success conditions here.
+            let msg = "Click on Approve to approve this sales order and issue to the customer"
+            let fulfilledMsg = "This order has not yet been approved"
+
+            if(isApproved) {
+              msg = "This order has been approved"
+              if(isFulfilled){
+                fulfilledMsg = "This order has been fulfill"
+              }else{
+                fulfilledMsg = "Click on Fulfill to convert this sales order to invoice and issue to the customer"
+                $('#sidebar-fulfill-button').prop('disabled', false);
+              }
+            }else{
+              $('#sidebar-approve-button').prop('disabled', false);
+            }
+            
+            $("#sidebar-approve-text").text(msg)
+            $("#sidebar-fulfill-text").text(fulfilledMsg)
+
+            showStatus('Ready.');
+          })
+       .withFailureHandler(function(msg) {
+            // Respond to failure conditions here.
+            showStatus(msg, 'error');
+          })
+       .checkOrderStatus();
+  });
+
+  /**
+   * Calls the server to modify the document.
+   * Replaces the document footer text; formatting and styles will
+   * not be preserved.
+   */
+  function onApproveBtnClick() {
+    this.disabled = true;
+
+    // Gather any information that needs to be sent to the server here.
+    showStatus('Processing...');
+
+    // Send the value to the server and listen for a response.
+    google.script.run
+        .withSuccessHandler(
+          function(msg, element) {
+            // Respond to success conditions here.
+            showStatus('Done.');
+            element.disabled = false;
+            $('#sidebar-approve-button').prop('disabled', true);
+
+            $("#sidebar-approve-text").text("This order has been approved")
+            $("#sidebar-fulfill-text").text("Click on Fulfill to convert this sales order to invoice and issue to the customer")
+            $('#sidebar-fulfill-button').prop('disabled', false);
+          })
+        .withFailureHandler(
+          function(msg, element) {
+            // Respond to failure conditions here.
+            showStatus(msg, 'error');
+            element.disabled = false;
+          })
+        .withUserObject(this)
+        .approveSalesOrder();
+  }
+
+    function onFulfillBtnClick() {
+    this.disabled = true;
+
+    // Gather any information that needs to be sent to the server here.
+    showStatus('Processing...');
+
+    // Send the value to the server and listen for a response.
+    google.script.run
+        .withSuccessHandler(
+          function(msg, element) {
+            // Respond to success conditions here.
+            showStatus('Done.');
+            element.disabled = false;
+            $('#sidebar-fulfill-button').prop('disabled', true);
+            $("#sidebar-fulfill-text").text("This order has been fulfilled")
+
+            $("#sidebar-fulfill-complete-text").html(`Invoice generated with this <a href="${msg}" target="_blank">url</a>.`);
+
+          })
+        .withFailureHandler(
+          function(msg, element) {
+            // Respond to failure conditions here.
+            showStatus(msg, 'error');
+            element.disabled = false;
+          })
+        .withUserObject(this)
+        .fulfillSalesOrder();
+  }
+
+  /**
+   * Displays the given status message in the sidebar.
+   *
+   * @param {String} msg The status message to display.
+   * @param {String} classId The message type (class id) that the message
+   *   should be displayed as.
+   */
+  function showStatus(msg, classId) {
+    $('#sidebar-status').removeClass().html(msg);
+    if (classId) {
+      $('#sidebar-status').addClass(classId);
+    }
+  }
+
+</script>
